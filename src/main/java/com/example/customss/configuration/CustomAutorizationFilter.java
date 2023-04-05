@@ -1,20 +1,9 @@
 package com.example.customss.configuration;
 
-import com.example.customss.service.AuthService;
 import com.example.customss.utils.JwtUtils;
 import io.jsonwebtoken.Claims;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -23,15 +12,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
-import java.rmi.server.ExportException;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CustomAutorizationFilter extends OncePerRequestFilter {
 
-    private final AuthService authService;
     private final JwtUtils jwtUtils;
+
+    private final AuthHolder authHolder;
 
     /**\
      * JWT 토큰을 검사함
@@ -65,36 +54,34 @@ public class CustomAutorizationFilter extends OncePerRequestFilter {
             log.info(targetUser.toString());
             log.info(targetUser.getExpiration().toString());
             log.info(String.valueOf(targetUser.getExpiration().getTime()));
-            SecurityContext currentContext = SecurityContextHolder.getContext();
-            log.info(currentContext.toString());
+            log.info(targetUser.getSubject());
 
-            if(currentContext.getAuthentication() == null)
+            String userName = targetUser.getSubject();
+
+
+
+            if(!authHolder.Logined())
             {
-                log.info("최초 접속 로그인 수행: {}", targetUser.getSubject());
-
-                UsernamePasswordAuthenticationToken internalToken   = new UsernamePasswordAuthenticationToken(targetUser.getId(), targetToken);
-                Authentication currentUserAuthentication            = authService.setAuthentication(internalToken);
-
-                SecurityContext newContext                          = SecurityContextHolder.createEmptyContext();
-
-                newContext.setAuthentication(currentUserAuthentication);
-                SecurityContextHolder.setContext(newContext);
-
-                log.info("로그인 완료");
-
+                log.info("최초 접속 로그인 실행: {}", targetUser);
+                authHolder.setUserName(userName);
+                authHolder.isLogined(true);
+                log.info("로그인 완료: {}", userName);
             }
 
             else
             {
-                log.info("현재 접속자, 현재 context와 동일한지 검증 시행");
-                throw new UserPrincipalNotFoundException("존재하지 않는 유저");
+                String currentUserName = authHolder.getUserName();
+                log.info("로그인 되어있습니다. : {}", currentUserName);
+
             }
 
         }
 
         else
         {
-
+            log.error("Token is Not Valid, Please ReLogin");
+            // 리프레시 토큰 검증 및 인증 서버로 Redirect 로직 필요.(2023-04-05)
+            throw new UserPrincipalNotFoundException("Permission Denied"); //예외를 던지며 요청 거부.
         }
 
         chain.doFilter(request, response);

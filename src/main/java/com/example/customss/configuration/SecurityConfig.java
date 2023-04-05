@@ -21,12 +21,6 @@ public class SecurityConfig {
     private final CustomAutorizationFilter customAutorizationFilter;
 
     @Bean
-    public AuthenticationManager authenticationManagerBean(AuthenticationConfiguration authConfig) throws Exception{
-        return authConfig.getAuthenticationManager();
-    }
-
-
-    @Bean
     public SecurityFilterChain webConfig(HttpSecurity http) throws Exception {
 
         http.authorizeRequests(
